@@ -116,6 +116,12 @@ def coeffEquiv : MonoidAlgebra R M ≃ (M →₀ R) where
   left_inv _ := rfl
   right_inv _ := rfl
 
+@[to_additive] lemma «forall» {P : MonoidAlgebra R M → Prop} : (∀ p, P p) ↔ ∀ q, P ⟨q⟩ :=
+  coeffEquiv.forall_congr_left
+
+@[to_additive] lemma «exists» {P : MonoidAlgebra R M → Prop} : (∃ p, P p) ↔ ∃ q, P ⟨q⟩ :=
+  coeffEquiv.exists_congr_left
+
 @[to_additive]
 lemma coeff_injective : (coeff : MonoidAlgebra R M → M →₀ R).Injective := coeffEquiv.injective
 
@@ -142,6 +148,10 @@ instance nontrivial [Nontrivial R] [Nonempty M] : Nontrivial (MonoidAlgebra R M)
 @[to_additive] instance unique [Subsingleton R] : Unique (MonoidAlgebra R M) := coeffEquiv.unique
 
 @[to_additive]
+instance instDecidableEq [DecidableEq R] [DecidableEq M] : DecidableEq (MonoidAlgebra R M) :=
+  coeffEquiv.decidableEq
+
+@[to_additive]
 instance addCommMonoid : AddCommMonoid (MonoidAlgebra R M) :=
  fast_instance% coeffEquiv.addCommMonoid
 
@@ -153,6 +163,20 @@ instance instIsCancelAdd [IsCancelAdd R] : IsCancelAdd (MonoidAlgebra R M) :=
 @[to_additive
 /-- `AddMonoidAlgebra.single m r` for `m : M`, `r : R` is the element `rm : R[M]`. -/]
 def single (m : M) (r : R) : MonoidAlgebra R M := .ofCoeff <| .single m r
+
+@[to_additive (attr := simp)]
+lemma coeff_single (m : M) (r : R) : (single m r).coeff = .single m r := rfl
+
+@[to_additive (attr := simp)]
+lemma ofCoeff_single (m : M) (r : R) : ofCoeff (.single m r) = single m r := rfl
+
+@[to_additive]
+lemma single_injective : (single m : R → MonoidAlgebra R M).Injective :=
+  ofCoeff_injective.comp <| Finsupp.single_injective _
+
+@[to_additive]
+lemma single_inj : single m₁ r₁ = single m₂ r₂ ↔ m₁ = m₂ ∧ r₁ = r₂ ∨ r₁ = 0 ∧ r₂ = 0 := by
+  simp [← coeff_inj, Finsupp.single_eq_single_iff]
 
 /-- Remove a term from an element of the monoid algebra. -/
 @[to_additive /-- Remove a term from an element of the monoid algebra. -/]
@@ -193,8 +217,7 @@ lemma coeff_smul_apply (a : A) (x : MonoidAlgebra R M) (m : M) :
 lemma ofCoeff_smul (a : A) (x : M →₀ R) : ofCoeff (a • x) = a • ofCoeff x := rfl
 
 @[to_additive (attr := simp) (dont_translate := A) smul_single]
-lemma smul_single (a : A) (m : M) (r : R) : a • single m r = single m (a • r) := by
-  ext; simp [single]
+lemma smul_single (a : A) (m : M) (r : R) : a • single m r = single m (a • r) := by ext; simp
 
 @[to_additive (attr := simp) (dont_translate := R) smul_single']
 lemma smul_single' (r' : R) (m : M) (r : R) : r' • single m r = single m (r' * r) := smul_single ..
@@ -251,14 +274,11 @@ lemma ofCoeff_finsuppSum [AddCommMonoid N] (f : ι →₀ N) (g : ι → N → M
     ofCoeff (f.sum g) = f.sum (fun i n ↦ ofCoeff (g i n)) := map_finsuppSum coeffAddEquiv.symm ..
 
 @[to_additive (attr := simp)]
-lemma coeff_single (m : M) (r : R) : (single m r).coeff = .single m r := rfl
-
-@[to_additive (attr := simp)]
 lemma single_zero (m : M) : (single m 0 : MonoidAlgebra R M) = 0 := by simp [single]
 
 @[to_additive (attr := simp)]
 lemma single_add (m : M) (r₁ r₂ : R) : single m (r₁ + r₂) = single m r₁ + single m r₂ := by
-  simp [single]
+  ext; simp
 
 @[to_additive (attr := deprecated coeff_add (since := "2025-11-26"))]
 lemma coe_add (f g : MonoidAlgebra R M) : ⇑(f + g).coeff = f.coeff + g.coeff := rfl
@@ -331,9 +351,9 @@ protected theorem coeff_single_apply {a a' : M} {b : R} [Decidable (a = a')] :
   Finsupp.single_apply
 
 @[to_additive (attr := simp)]
-lemma single_eq_zero : single m r = 0 ↔ r = 0 := by simp [single]
+lemma single_eq_zero : single m r = 0 ↔ r = 0 := by simp [← coeff_inj]
 
-@[to_additive] lemma single_ne_zero : single m r ≠ 0 ↔ r ≠ 0 := by simp [single]
+@[to_additive] lemma single_ne_zero : single m r ≠ 0 ↔ r ≠ 0 := single_eq_zero.not
 
 @[to_additive (attr := elab_as_elim)]
 lemma induction {motive : MonoidAlgebra R M → Prop} (x : MonoidAlgebra R M)
@@ -349,6 +369,12 @@ lemma induction_linear {p : MonoidAlgebra R M → Prop} (x : MonoidAlgebra R M) 
     (single : ∀ m r, p (single m r)) : p x :=
   Finsupp.induction_linear (motive := (p <| ofCoeff ·)) x.coeff zero (fun _ _ ↦ add _ _)
     (fun _ _ ↦ single _ _)
+
+@[to_additive (attr := simp) addSubmonoidClosure_single]
+lemma addSubmonoidClosure_single :
+    AddSubmonoid.closure {x : MonoidAlgebra R M | ∃ m r, x = single m r} = ⊤ :=
+  top_unique fun x _hx => induction x (AddSubmonoid.zero_mem _) fun a b _f _ha _hb =>
+    AddSubmonoid.add_mem _ <| AddSubmonoid.subset_closure <| ⟨a, b, rfl⟩
 
 section One
 variable [One M]
@@ -704,7 +730,7 @@ lemma coeff_neg (x : MonoidAlgebra R M) : (-x).coeff = -x.coeff := rfl
 lemma ofCoeff_neg (x : M →₀ R) : ofCoeff (-x) = -ofCoeff x := rfl
 
 @[to_additive (attr := simp) (dont_translate := R)]
-lemma single_neg (m : M) (r : R) : single m (-r) = -single m r := by simp [single]
+lemma single_neg (m : M) (r : R) : single m (-r) = -single m r := by ext; simp
 
 @[to_additive (attr := simp) (dont_translate := R)]
 lemma coeff_sub (x y : MonoidAlgebra R M) : (x - y).coeff = x.coeff - y.coeff := rfl
@@ -713,7 +739,7 @@ lemma coeff_sub (x y : MonoidAlgebra R M) : (x - y).coeff = x.coeff - y.coeff :=
 lemma ofCoeff_sub (x y : M →₀ R) : ofCoeff (x - y) = ofCoeff x - ofCoeff y := rfl
 
 @[to_additive (attr := simp) (dont_translate := R)]
-lemma single_sub (m : M) (r s : R) : single m (r - s) = single m r - single m s := by simp [single]
+lemma single_sub (m : M) (r s : R) : single m (r - s) = single m r - single m s := by ext; simp
 
 @[to_additive (dont_translate := R)]
 instance nonUnitalNonAssocRing [Mul M] : NonUnitalNonAssocRing (MonoidAlgebra R M) where

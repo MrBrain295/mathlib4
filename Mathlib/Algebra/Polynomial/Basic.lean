@@ -235,7 +235,7 @@ theorem toFinsupp_pow (a : R[X]) (n : ℕ) : (a ^ n).toFinsupp = a.toFinsupp ^ n
 
 theorem _root_.IsSMulRegular.polynomial {S : Type*} [SMulZeroClass S R] {a : S}
     (ha : IsSMulRegular R a) : IsSMulRegular R[X] a
-  | ⟨_x⟩, ⟨_y⟩, h => congr_arg _ <| ha.finsupp (Polynomial.ofFinsupp.inj h)
+  | ⟨_x⟩, ⟨_y⟩, h => congr_arg _ <| coeff_injective <| ha.finsupp congr(($h).toFinsupp.coeff)
 
 theorem toFinsupp_injective : Function.Injective (toFinsupp : R[X] → AddMonoidAlgebra _ _) :=
   fun ⟨_x⟩ ⟨_y⟩ => congr_arg _
@@ -295,7 +295,7 @@ instance distribMulAction {S} [Monoid S] [DistribMulAction S R] : DistribMulActi
 
 instance faithfulSMul {S} [SMulZeroClass S R] [FaithfulSMul S R] : FaithfulSMul S R[X] where
   eq_of_smul_eq_smul {_s₁ _s₂} h :=
-    eq_of_smul_eq_smul fun a : ℕ →₀ R => congr_arg toFinsupp (h ⟨a⟩)
+    eq_of_smul_eq_smul fun a : ℕ →₀ R => congr(($(h ⟨ofCoeff a⟩)).toFinsupp.coeff)
 
 instance module {S} [Semiring S] [Module S R] : Module S R[X] :=
   fast_instance% Function.Injective.module _ ⟨⟨toFinsupp, toFinsupp_zero⟩, toFinsupp_add⟩
@@ -343,8 +343,7 @@ def toFinsuppIso : R[X] ≃+* R[ℕ] where
   map_mul' := toFinsupp_mul
   map_add' := toFinsupp_add
 
-instance [DecidableEq R] : DecidableEq R[X] :=
-  @Equiv.decidableEq R[X] _ (toFinsuppIso R).toEquiv (Finsupp.instDecidableEq)
+instance [DecidableEq R] : DecidableEq R[X] := (toFinsuppIso R).toEquiv.decidableEq
 
 /-- Linear isomorphism between `R[X]` and `R[ℕ]`. This is just an
 implementation detail, but it can be useful to transfer results from `Finsupp` to polynomials. -/
@@ -365,12 +364,12 @@ theorem toFinsupp_sum {ι : Type*} (s : Finset ι) (f : ι → R[X]) :
 
 /-- The set of all `n` such that `X^n` has a non-zero coefficient. -/
 def support : R[X] → Finset ℕ
-  | ⟨p⟩ => p.support
+  | ⟨p⟩ => p.coeff.support
 
 @[simp]
-theorem support_ofFinsupp (p) : support (⟨p⟩ : R[X]) = p.support := by rw [support]
+theorem support_ofFinsupp (p) : support (⟨p⟩ : R[X]) = p.coeff.support := by rw [support]
 
-theorem support_toFinsupp (p : R[X]) : p.toFinsupp.support = p.support := by rw [support]
+theorem support_toFinsupp (p : R[X]) : p.toFinsupp.coeff.support = p.support := by rw [support]
 
 @[simp]
 theorem support_zero : (0 : R[X]).support = ∅ :=
@@ -388,16 +387,16 @@ theorem card_support_eq_zero : #p.support = 0 ↔ p = 0 := by simp
 
 /-- `monomial s a` is the monomial `a * X^s` -/
 def monomial (n : ℕ) : R →ₗ[R] R[X] where
-  toFun t := ⟨Finsupp.single n t⟩
+  toFun t := ⟨.single n t⟩
   map_add' x y := by simp [← ofFinsupp_add]
   map_smul' r x := by simp [← ofFinsupp_smul]
 
 @[simp]
-theorem toFinsupp_monomial (n : ℕ) (r : R) : (monomial n r).toFinsupp = Finsupp.single n r := by
+theorem toFinsupp_monomial (n : ℕ) (r : R) : (monomial n r).toFinsupp = .single n r := by
   simp [monomial]
 
 @[simp]
-theorem ofFinsupp_single (n : ℕ) (r : R) : (⟨Finsupp.single n r⟩ : R[X]) = monomial n r := by
+theorem ofFinsupp_single (n : ℕ) (r : R) : (⟨.single n r⟩ : R[X]) = monomial n r := by
   simp [monomial]
 
 @[simp]
@@ -428,7 +427,7 @@ theorem smul_monomial {S} [SMulZeroClass S R] (a : S) (n : ℕ) (b : R) :
   toFinsupp_injective <| AddMonoidAlgebra.smul_single _ _ _
 
 theorem monomial_injective (n : ℕ) : Function.Injective (monomial n : R → R[X]) :=
-  (toFinsuppIso R).symm.injective.comp (single_injective n)
+  (toFinsuppIso R).symm.injective.comp single_injective
 
 @[simp]
 theorem monomial_eq_zero_iff (t : R) (n : ℕ) : monomial n t = 0 ↔ t = 0 :=
@@ -436,7 +435,7 @@ theorem monomial_eq_zero_iff (t : R) (n : ℕ) : monomial n t = 0 ↔ t = 0 :=
 
 theorem monomial_eq_monomial_iff {m n : ℕ} {a b : R} :
     monomial m a = monomial n b ↔ m = n ∧ a = b ∨ a = 0 ∧ b = 0 := by
-  rw [← toFinsupp_inj, toFinsupp_monomial, toFinsupp_monomial, Finsupp.single_eq_single_iff]
+  rw [← toFinsupp_inj, toFinsupp_monomial, toFinsupp_monomial, single_inj]
 
 theorem support_add : (p + q).support ⊆ p.support ∪ q.support := by
   simpa [support] using Finsupp.support_add
@@ -503,7 +502,7 @@ theorem monomial_one_right_eq_X_pow (n : ℕ) : monomial n (1 : R) = X ^ n := by
   | succ n ih => rw [pow_succ, ← ih, ← monomial_one_one_eq_X, monomial_mul_monomial, mul_one]
 
 @[simp]
-theorem toFinsupp_X : X.toFinsupp = Finsupp.single 1 (1 : R) :=
+theorem toFinsupp_X : X.toFinsupp = .single 1 (1 : R) :=
   rfl
 
 theorem X_ne_C [Nontrivial R] (a : R) : X ≠ C a := by
@@ -515,7 +514,7 @@ theorem X_mul : X * p = p * X := by
   rcases p with ⟨⟩
   simp only [X, ← ofFinsupp_single, ← ofFinsupp_mul, ofFinsupp.injEq]
   ext
-  simp [AddMonoidAlgebra.mul_apply, add_comm]
+  simp [AddMonoidAlgebra.coeff_mul, add_comm]
 
 theorem X_pow_mul {n : ℕ} : X ^ n * p = p * X ^ n := by
   induction n with
@@ -575,20 +574,18 @@ theorem X_pow_mul_monomial (k n : ℕ) (r : R) : X ^ k * monomial n r = monomial
 
 /-- `coeff p n` (often denoted `p.coeff n`) is the coefficient of `X^n` in `p`. -/
 def coeff : R[X] → ℕ → R
-  | ⟨p⟩ => p
+  | ⟨p⟩ => p.coeff
 
 @[simp]
-theorem coeff_ofFinsupp (p) : coeff (⟨p⟩ : R[X]) = p := by rw [coeff]
+theorem coeff_ofFinsupp (p) : coeff (⟨p⟩ : R[X]) = p.coeff := by rw [coeff]
 
-theorem coeff_injective : Injective (coeff : R[X] → ℕ → R) := by
-  rintro ⟨p⟩ ⟨q⟩
-  simp only [coeff, DFunLike.coe_fn_eq, imp_self, ofFinsupp.injEq]
+theorem coeff_injective : Injective (coeff : R[X] → ℕ → R) := by rintro ⟨p⟩ ⟨q⟩; simp [coeff]
 
 @[simp]
 theorem coeff_inj : p.coeff = q.coeff ↔ p = q :=
   coeff_injective.eq_iff
 
-theorem toFinsupp_apply (f : R[X]) (i) : f.toFinsupp i = f.coeff i := by cases f; rfl
+theorem toFinsupp_apply (f : R[X]) (i) : f.toFinsupp.coeff i = f.coeff i := by cases f; rfl
 
 theorem coeff_monomial : coeff (monomial n a) m = if n = m then a else 0 := by
   simp [coeff, Finsupp.single_apply]
@@ -676,13 +673,13 @@ theorem C_mul_X_pow_eq_monomial : ∀ {n : ℕ}, C a * X ^ n = monomial n a
 
 @[simp high]
 theorem toFinsupp_C_mul_X_pow (a : R) (n : ℕ) :
-    Polynomial.toFinsupp (C a * X ^ n) = Finsupp.single n a := by
+    Polynomial.toFinsupp (C a * X ^ n) = .single n a := by
   rw [C_mul_X_pow_eq_monomial, toFinsupp_monomial]
 
 theorem C_mul_X_eq_monomial : C a * X = monomial 1 a := by rw [← C_mul_X_pow_eq_monomial, pow_one]
 
 @[simp high]
-theorem toFinsupp_C_mul_X (a : R) : Polynomial.toFinsupp (C a * X) = Finsupp.single 1 a := by
+theorem toFinsupp_C_mul_X (a : R) : Polynomial.toFinsupp (C a * X) = .single 1 a := by
   rw [C_mul_X_eq_monomial, toFinsupp_monomial]
 
 theorem C_injective : Injective (C : R → R[X]) :=
@@ -711,9 +708,9 @@ theorem forall_eq_iff_forall_eq : (∀ f g : R[X], f = g) ↔ ∀ a b : R, a = b
   simpa only [← subsingleton_iff] using subsingleton_iff_subsingleton
 
 theorem ext_iff {p q : R[X]} : p = q ↔ ∀ n, coeff p n = coeff q n := by
-  rcases p with ⟨f : ℕ →₀ R⟩
-  rcases q with ⟨g : ℕ →₀ R⟩
-  simpa [coeff] using DFunLike.ext_iff (f := f) (g := g)
+  rcases p with ⟨f⟩
+  rcases q with ⟨g⟩
+  simpa [coeff] using DFunLike.ext_iff (f := f.coeff) (g := g.coeff)
 
 @[ext]
 theorem ext {p q : R[X]} : (∀ n, coeff p n = coeff q n) → p = q :=
@@ -723,8 +720,8 @@ theorem ext {p q : R[X]} : (∀ n, coeff p n = coeff q n) → p = q :=
 theorem addSubmonoid_closure_setOf_eq_monomial :
     AddSubmonoid.closure { p : R[X] | ∃ n a, p = monomial n a } = ⊤ := by
   apply top_unique
-  rw [← AddSubmonoid.map_equiv_top (toFinsuppIso R).symm.toAddEquiv, ←
-    Finsupp.add_closure_setOf_eq_single, AddMonoidHom.map_mclosure]
+  rw [← AddSubmonoid.map_equiv_top (toFinsuppIso R).symm.toAddEquiv, ← addSubmonoidClosure_single,
+    AddMonoidHom.map_mclosure]
   refine AddSubmonoid.closure_mono (Set.image_subset_iff.2 ?_)
   rintro _ ⟨n, a, rfl⟩
   exact ⟨n, a, Polynomial.ofFinsupp_single _ _⟩
@@ -805,7 +802,7 @@ theorem X_pow_eq_monomial (n) : X ^ n = monomial n (1 : R) :=
   (monomial_one_right_eq_X_pow n).symm
 
 @[simp high]
-theorem toFinsupp_X_pow (n : ℕ) : (X ^ n).toFinsupp = Finsupp.single n (1 : R) := by
+theorem toFinsupp_X_pow (n : ℕ) : (X ^ n).toFinsupp = .single n (1 : R) := by
   rw [X_pow_eq_monomial, toFinsupp_monomial]
 
 theorem smul_X_eq_monomial {n} : a • X ^ n = monomial n (a : R) := by
@@ -823,12 +820,12 @@ theorem support_X (H : ¬(1 : R) = 0) : (X : R[X]).support = singleton 1 := by
 
 theorem monomial_left_inj {a : R} (ha : a ≠ 0) {i j : ℕ} :
     monomial i a = monomial j a ↔ i = j := by
-  simp only [← ofFinsupp_single, ofFinsupp.injEq, Finsupp.single_left_inj ha]
+  simp [monomial_eq_monomial_iff, ha]
 
 theorem binomial_eq_binomial {k l m n : ℕ} {u v : R} (hu : u ≠ 0) (hv : v ≠ 0) :
     C u * X ^ k + C v * X ^ l = C u * X ^ m + C v * X ^ n ↔
       k = m ∧ l = n ∨ u = v ∧ k = n ∧ l = m ∨ u + v = 0 ∧ k = l ∧ m = n := by
-  simp_rw [C_mul_X_pow_eq_monomial, ← toFinsupp_inj, toFinsupp_add, toFinsupp_monomial]
+  simp [C_mul_X_pow_eq_monomial, ← toFinsupp_inj, toFinsupp_add, toFinsupp_monomial]
   exact Finsupp.single_add_single_eq_single_add_single hu hv
 
 theorem natCast_mul (n : ℕ) (p : R[X]) : (n : R[X]) * p = n • p :=
