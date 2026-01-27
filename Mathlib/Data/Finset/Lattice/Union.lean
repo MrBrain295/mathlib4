@@ -12,10 +12,6 @@ public import Mathlib.Data.Finset.Union
 # Relating `Finset.biUnion` with lattice operations
 
 This file shows `Finset.biUnion` could alternatively be defined in terms of `Finset.sup`.
-
-## TODO
-
-Remove `Finset.biUnion` in favour of `Finset.sup`.
 -/
 
 public section
