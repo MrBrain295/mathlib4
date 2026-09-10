@@ -68,12 +68,13 @@ def BlankExtends.above {Γ} [Inhabited Γ] {l l₁ l₂ : List Γ} (h₁ : Blank
 
 theorem BlankExtends.above_of_le {Γ} [Inhabited Γ] {l l₁ l₂ : List Γ} :
     BlankExtends l₁ l → BlankExtends l₂ l → l₁.length ≤ l₂.length → BlankExtends l₁ l₂ := by
-  rintro ⟨i, rfl⟩ ⟨j, e⟩ h; use i - j
+  rintro ⟨i, rfl⟩ ⟨j, e⟩ h
+  have e' := congrArg List.length e
+  simp only [List.length_append, List.length_replicate] at e'
+  use i - j
   refine List.append_cancel_right (e.symm.trans ?_)
   rw [List.append_assoc, ← List.replicate_add, Nat.sub_add_cancel]
-  apply_fun List.length at e
-  simp only [List.length_append, List.length_replicate] at e
-  rwa [← Nat.add_le_add_iff_left, e, Nat.add_le_add_iff_right]
+  exact Nat.le_of_add_le_add_left ((Nat.add_le_add_right h j).trans_eq e'.symm)
 
 /-- `BlankRel` is the symmetric closure of `BlankExtends`, turning it into an equivalence
 relation. Two lists are related by `BlankRel` if one extends the other by blanks. -/
